@@ -1277,38 +1277,69 @@ app.use(function (req, res) {
    DATABASE
 ========================================================= */
 
-if (!process.env.MONGO_URI) {
-  console.error(
-    "ERROR: MONGO_URI is missing from server/.env"
-  );
+let mongoConnection = null;
 
-  process.exit(1);
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is missing.");
+  }
+
+  if (!mongoConnection) {
+    mongoConnection = mongoose.connect(process.env.MONGO_URI);
+  }
+
+  await mongoConnection;
+
+  return mongoose.connection;
 }
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(function () {
-    console.log("");
-    console.log("=================================");
-    console.log(" MongoDB connected successfully");
-    console.log(" Portfolio Builder Backend");
-    console.log("=================================");
-    console.log("");
+/* =========================================================
+   DATABASE MIDDLEWARE
+========================================================= */
 
-    app.listen(PORT, "0.0.0.0", function () {
-      console.log(
-        `Server running on http://localhost:${PORT}`
-      );
+app.use(async function (req, res, next) {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
 
-      console.log(
-        `Network API: http://192.168.100.132:${PORT}/api/health`
-      );
+    res.status(500).json({
+      success: false,
+      message: "Database connection failed.",
     });
-  })
-  .catch(function (error) {
-    console.error("");
-    console.error("MongoDB connection failed:");
-    console.error(error.message);
-    console.error("");
-    process.exit(1);
+  }
+});
+
+/* =========================================================
+   LOCAL SERVER
+========================================================= */
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, "0.0.0.0", function () {
+    console.log("");
+    console.log("=================================");
+    console.log(" MongoDB / Portfolio Builder");
+    console.log(" Local Backend");
+    console.log("=================================");
+    console.log("");
+
+    console.log(
+      `Server running on http://localhost:${PORT}`
+    );
+
+    console.log(
+      `Network API: http://192.168.100.132:${PORT}/api/health`
+    );
   });
+}
+
+/* =========================================================
+   VERCEL EXPORT
+========================================================= */
+
+module.exports = app;
