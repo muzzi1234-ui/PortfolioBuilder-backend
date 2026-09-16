@@ -13,7 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "portfolio-builder-secret";
 
-const uploadDir = path.join(__dirname, "uploads");
+const uploadDir = process.env.VERCEL ? "/tmp/portfolio-builder-uploads" : path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
