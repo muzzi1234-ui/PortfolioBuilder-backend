@@ -400,7 +400,48 @@ function normalizeUrl(value) {
 
   return `https://${text}`;
 }
+ /* =========================================================
+   DATABASE
+========================================================= */
 
+let mongoConnection = null;
+
+async function connectDB() {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is missing.");
+  }
+
+  if (!mongoConnection) {
+    mongoConnection = mongoose.connect(process.env.MONGO_URI);
+  }
+
+  await mongoConnection;
+
+  return mongoose.connection;
+}
+
+/* =========================================================
+   DATABASE MIDDLEWARE
+========================================================= */
+
+app.use(async function (req, res, next) {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Database connection failed.",
+      error: error.message,
+    });
+  }
+});
 /* =========================================================
    HEALTH
 ========================================================= */
@@ -1273,47 +1314,7 @@ app.use(function (req, res) {
   });
 });
 
-/* =========================================================
-   DATABASE
-========================================================= */
 
-let mongoConnection = null;
-
-async function connectDB() {
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection;
-  }
-
-  if (!process.env.MONGO_URI) {
-    throw new Error("MONGO_URI is missing.");
-  }
-
-  if (!mongoConnection) {
-    mongoConnection = mongoose.connect(process.env.MONGO_URI);
-  }
-
-  await mongoConnection;
-
-  return mongoose.connection;
-}
-
-/* =========================================================
-   DATABASE MIDDLEWARE
-========================================================= */
-
-app.use(async function (req, res, next) {
-  try {
-    await connectDB();
-    next();
-  } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
-
-    res.status(500).json({
-      success: false,
-      message: "Database connection failed.",
-    });
-  }
-});
 
 /* =========================================================
    LOCAL SERVER
